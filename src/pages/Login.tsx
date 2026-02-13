@@ -173,7 +173,13 @@ export default function Login() {
     setLoading(true);
     try {
       const profile = config.TELEGRAM_WEBAPP_PROFILE || '';
-      await auth.telegramWebAppAuth(telegramWebApp.initData, profile);
+      const authResponse = await auth.telegramWebAppAuth(telegramWebApp.initData, profile);
+      const sessionId = authResponse.data?.session_id || authResponse.data?.id;
+      if (!sessionId) {
+        notifications.show({ title: t('common.error'), message: t('auth.telegramAuthError'), color: 'red' });
+        setShowLoginForm(true);
+        return;
+      }
 
       const userResponse = await auth.getCurrentUser();
       const responseData = userResponse.data.data;

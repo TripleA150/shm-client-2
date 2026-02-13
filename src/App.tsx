@@ -25,10 +25,6 @@ import Profile from './pages/Profile';
 import Login from './pages/Login';
 import Tickets from './pages/Tickets';
 
-const { isInsideTelegramWebApp } = useTelegramWebApp();
-const hasTelegramWebAppAuth = isInsideTelegramWebApp && config.TELEGRAM_WEBAPP_AUTH_ENABLE === 'true';
-const hasTelegramWebAppAutoAuth = hasTelegramWebAppAuth && config.TELEGRAM_WEBAPP_AUTO_AUTH_ENABLE === 'true';
-
 const theme = createTheme({
   primaryColor: 'blue',
   fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif',
@@ -74,6 +70,10 @@ function WebAppHeader() {
   const handleThemeToggle = () => {
     setColorScheme(computedColorScheme === 'light' ? 'dark' : 'light');
   };
+
+  const { isInsideTelegramWebApp } = useTelegramWebApp();
+  const hasTelegramWebAppAuth = isInsideTelegramWebApp && config.TELEGRAM_WEBAPP_AUTH_ENABLE === 'true';
+  const hasTelegramWebAppAutoAuth = hasTelegramWebAppAuth && config.TELEGRAM_WEBAPP_AUTO_AUTH_ENABLE === 'true';
 
   const handleSupportLink = () => {
     if (config.SUPPORT_LINK) {
@@ -197,9 +197,12 @@ function AppContent() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, isAuthenticated, isLoading, setUser, setIsLoading, logout } = useStore();
+  const { isInsideTelegramWebApp } = useTelegramWebApp();
   const [isTelegramWebApp] = useState(isInsideTelegramWebApp);
   const isMobile = useMediaQuery('(max-width: 768px)');
   const { t } = useTranslation();
+  const hasTelegramWebAppAuth = isInsideTelegramWebApp && config.TELEGRAM_WEBAPP_AUTH_ENABLE === 'true';
+  const hasTelegramWebAppAutoAuth = hasTelegramWebAppAuth && config.TELEGRAM_WEBAPP_AUTO_AUTH_ENABLE === 'true';
 
   const handleSupportLink = () => {
     if (config.SUPPORT_LINK) {
