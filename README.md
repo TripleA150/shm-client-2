@@ -57,35 +57,6 @@ services:
 ### Telegram Widget
 Для работы с авторизацией через Telegram Widget нужно в астройках бота  который указан в `TELGRAM_BOT_NAME` указать домен на котором расположена ваше приложение `shm-client`
 
-## Установка на другом сервере
-
-```bash
-git clone https://github.com/bkeenke/shm-client-2
-```
-
-```bash
-cd shm-client-2
-npm install
-```
-
-Создайте файл `public/config.js`:
-
-```javascript
-window.SHM_CONFIG = {
-  API_URL: 'https://your-api.example.com',
-  APP_NAME: 'My Service',
-  TELEGRAM_BOT_NAME: 'your_bot',
-  TELEGRAM_BOT_AUTH_ENABLE: 'true',
-  TELEGRAM_WEBAPP_AUTH_ENABLE: 'true',
-  TELEGRAM_WEBAPP_PROFILE: 'telegram_bot',
-  SUPPORT_LINK: 'https://t.me/your_support_bot'
-};
-```
-
-```bash
-npm run build
-```
-
 ## Категории услуг для VPN/Proxy
 
 Для отображения **QR-кода** и **ссылки подписки** в деталях услуги, категория услуги должна соответствовать одному из следующих паттернов:
