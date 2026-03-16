@@ -127,7 +127,12 @@ export const userApi = {
   resetPasswordWithToken: (token: string, password: string) => api.post('/user/passwd/reset/verify', { token, password }),
   getServices: () => api.get('/user/service', { params: { limit: 1000 } }),
   stopService: (userServiceId: number) => api.post('/user/service/stop', { user_service_id: userServiceId }),
-  changeService: (userServiceId: number, serviceId: number, finish_active: number) => api.post('/user/service/change', { user_service_id: userServiceId, service_id: serviceId, finish_active: finish_active }),
+  changeService: (userServiceId: number, serviceId: number, finish_active: number, partial_renew: number) => api.post('/user/service/change', {
+    user_service_id: userServiceId,
+    service_id: serviceId,
+    finish_active: finish_active,
+    allow_partial_period: partial_renew,
+  }),
   getPayments: () => api.get('/user/pay'),
   getPaySystems: () => api.get('/user/pay/paysystems'),
   getForecast: () => api.get('/user/pay/forecast'),

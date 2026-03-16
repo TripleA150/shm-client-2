@@ -11,6 +11,7 @@ interface OrderService {
   name: string;
   category: string;
   cost: number;
+  partial_renew?: boolean;
   real_cost?: number;
   cost_discount?: number;
   cost_bonus?: number;
@@ -84,7 +85,7 @@ export default function OrderServiceModal({
   const [selectedService, setSelectedService] = useState<OrderService | null>(null);
   const [ordering, setOrdering] = useState(false);
   const [userBalance, setUserBalance] = useState<number>(0);
-  // const [userBonus, setUserBonus] = useState<number>(0);
+  const [userBonus, setUserBonus] = useState<number>(0);
   const [paySystems, setPaySystems] = useState<PaySystem[]>([]);
   const [selectedPaySystem, setSelectedPaySystem] = useState<string | null>(null);
   const [payAmount, setPayAmount] = useState<number | string>(0);
@@ -94,6 +95,22 @@ export default function OrderServiceModal({
 
   const isChangeMode = mode === 'change';
   const canDeferChange = isChangeMode && currentService?.status === 'ACTIVE';
+
+  const getAppliedBonus = (service: OrderService): number => {
+    const plannedBonus = Number(service.cost_bonus || 0);
+    return Math.max(0, Math.min(plannedBonus, Number(userBonus || 0)));
+  };
+
+  const getEffectiveCost = (service: OrderService): number => {
+    const cost = Number(service.cost || 0);
+    const costDiscount = Number(service.cost_discount || 0);
+    const appliedBonus = getAppliedBonus(service);
+    return Math.max(0, cost - costDiscount - appliedBonus);
+  };
+
+  const getTopUpAmount = (service: OrderService, balance: number): number => {
+    return Math.max(0, Math.ceil((getEffectiveCost(service) - balance) * 100) / 100);
+  };
 
   useEffect(() => {
     if (opened) {
@@ -113,14 +130,14 @@ export default function OrderServiceModal({
 
   useEffect(() => {
     if (selectedService && !isChangeMode) {
-      const cost = selectedService.real_cost || selectedService.cost;
-      const needToPay = Math.max(0, Math.ceil((cost - userBalance) * 100) / 100);
+      const cost = getEffectiveCost(selectedService);
+      const needToPay = getTopUpAmount(selectedService, userBalance);
       setPayAmount(needToPay);
       if (userBalance < cost && !paySystemsLoaded) {
         loadPaySystems();
       }
     }
-  }, [selectedService, userBalance, isChangeMode]);
+  }, [selectedService, userBalance, userBonus, isChangeMode]);
 
   useEffect(() => {
     if (isChangeMode) {
@@ -133,7 +150,7 @@ export default function OrderServiceModal({
       const response = await userApi.getProfile();
       const userData = response.data.data?.[0] || response.data.data;
       setUserBalance(userData?.balance || 0);
-      // setUserBonus(userData?.bonus || 0);
+      setUserBonus(userData?.bonus || 0);
     } catch {
     }
   };
@@ -256,7 +273,8 @@ export default function OrderServiceModal({
       } else {
         finishActive = canDeferChange && finishAfterActive ? 1 : 0;
       }
-      await userApi.changeService(currentService.user_service_id, selectedService.service_id, finishActive);
+      const partial_renew = selectedService.partial_renew ? 1 : 0;
+      await userApi.changeService(currentService.user_service_id, selectedService.service_id, finishActive, partial_renew);
 
       notifications.show({
         title: t('common.success'),
@@ -373,22 +391,22 @@ export default function OrderServiceModal({
                       </>
                     ) : null}
                     <Text fw={600} size="lg" color={selectedService.discount && selectedService.discount > 0 ? 'green' : undefined}>
-                      {selectedService.real_cost || selectedService.cost} ₽
+                        {getEffectiveCost(selectedService)} ₽
                     </Text>
                   </Group>
-                  {selectedService.cost_discount && selectedService.cost_discount > 0 && selectedService.cost_bonus === 0  ? (
+                  {selectedService.cost_discount && selectedService.cost_discount > 0 && getAppliedBonus(selectedService) === 0 ? (
                     <Text size="xs" c="dimmed" mt="xs">
                       {t('services.savings', { amount: selectedService.cost_discount })}
                     </Text>
                   ) : null}
-                  {selectedService.cost_bonus && selectedService.cost_bonus > 0 && selectedService.cost_discount === 0 ? (
+                  {getAppliedBonus(selectedService) > 0 && selectedService.cost_discount === 0 ? (
                     <Text size="xs" c="dimmed" mt="xs">
-                      {t('services.savings_bonus', { amount: selectedService.cost_bonus })}
+                      {t('services.savings_bonus', { amount: getAppliedBonus(selectedService) })}
                     </Text>
                   ) : null}
-                  {selectedService.cost_discount && selectedService.cost_discount > 0 && selectedService.cost_bonus && selectedService.cost_bonus > 0  ? (
+                  {selectedService.cost_discount && selectedService.cost_discount > 0 && getAppliedBonus(selectedService) > 0 ? (
                     <Text size="xs" c="dimmed" mt="xs">
-                      {t('services.profit', { amount: selectedService.cost_bonus + selectedService.cost_discount })}
+                      {t('services.profit', { amount: getAppliedBonus(selectedService) + selectedService.cost_discount })}
                     </Text>
                   ) : null}
                 </div>
@@ -433,20 +451,20 @@ export default function OrderServiceModal({
             <>
               <Alert
                 variant="light"
-                color={userBalance >= (selectedService.real_cost || selectedService.cost) ? 'green' : 'yellow'}
+                color={userBalance >= getEffectiveCost(selectedService) ? 'green' : 'yellow'}
                 icon={<IconWallet size={18} />}
               >
                 <Group justify="space-between">
                   <Text size="sm">{t('order.yourBalance')}: <Text span fw={600}>{userBalance} ₽</Text></Text>
-                  {userBalance >= (selectedService.real_cost || selectedService.cost) ? (
+                  {userBalance >= getEffectiveCost(selectedService) ? (
                     <Badge color="green" variant="light">{t('order.enoughToPay')}</Badge>
                   ) : (
-                    <Badge color="yellow" variant="light">{t('order.needTopUp', { amount: Math.ceil((selectedService.cost - userBalance) * 100) / 100 })}</Badge>
+                    <Badge color="yellow" variant="light">{t('order.needTopUp', { amount: getTopUpAmount(selectedService, userBalance) })}</Badge>
                   )}
                 </Group>
               </Alert>
 
-              {userBalance >= (selectedService.real_cost || selectedService.cost) ? (
+              {userBalance >= getEffectiveCost(selectedService) ? (
                 <Button
                   fullWidth
                   size="md"
@@ -455,7 +473,7 @@ export default function OrderServiceModal({
                   onClick={handleOrder}
                   loading={ordering}
                 >
-                  {t('order.orderFor', { amount: selectedService.real_cost || selectedService.cost })}
+                  {t('order.orderFor', { amount: getEffectiveCost(selectedService) })}
                 </Button>
               ) : (
                 <>
@@ -484,11 +502,11 @@ export default function OrderServiceModal({
                             placeholder={t('payments.enterAmount')}
                             value={payAmount}
                             onChange={setPayAmount}
-                            min={Math.ceil(( selectedService.real_cost || selectedService.cost - userBalance) * 100) / 100}
+                            min={getTopUpAmount(selectedService, userBalance)}
                             step={10}
                             decimalScale={2}
                             suffix=" ₽"
-                            description={`${t('order.minimum')}: ${(Math.ceil((selectedService.real_cost || selectedService.cost - userBalance) * 100) / 100).toFixed(2)} ₽ (${t('order.missingAmount')})`}
+                            description={`${t('order.minimum')}: ${getTopUpAmount(selectedService, userBalance).toFixed(2)} ₽ (${t('order.missingAmount')})`}
                           />
                         </>
                       )}
@@ -541,15 +559,15 @@ export default function OrderServiceModal({
                         )}
                       </div>
                       <Group gap="sm" align="baseline">
-                        {service.discount && service.discount > 0 || service.cost_bonus ? (
+                        {service.discount && service.discount > 0 || getAppliedBonus(service) > 0 ? (
                           <>
                             <Text size="sm" c="dimmed" style={{ textDecoration: 'line-through' }}>
                               {service.cost} ₽
                             </Text>
                           </>
                         ) : null}
-                        <Text fw={600} color={service.discount && service.discount > 0 || service.cost_bonus ? 'green' : undefined}>
-                          {service.real_cost || service.cost} ₽
+                        <Text fw={600} color={service.discount && service.discount > 0 || getAppliedBonus(service) > 0 ? 'green' : undefined}>
+                          {getEffectiveCost(service)} ₽
                         </Text>
                         <Text size="xs" c="dimmed">
                           / {service.period === 1 ? t('common.month') :
