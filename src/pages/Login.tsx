@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Card, Text, Stack, Button, TextInput, PasswordInput, Divider, Title, Center, Modal, Group, Loader } from '@mantine/core';
+import { useForm, isEmail, hasLength } from '@mantine/form';
 import { IconLogin, IconUserPlus, IconFingerprint, IconShieldLock, IconBrandTelegram, IconMailForward, IconLock } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { useTranslation } from 'react-i18next';
@@ -42,7 +43,8 @@ export default function Login() {
   }, [location.search]);
   const [loading, setLoading] = useState(false);
   const [passkeyLoading, setPasskeyLoading] = useState(false);
-  const [formData, setFormData] = useState({ login: '', password: '', confirmPassword: '', login_or_email: '' });
+  const [loginOrEmail, setLoginOrEmail] = useState('');
+  const requireEmailRegister = config.EMAIL_REQUIRED === 'true' && config.EMAIL_VERIFY_REQUIRED === 'true';
   const [showOtp, setShowOtp] = useState(false);
   const [otpToken, setOtpToken] = useState('');
   const [showLoginForm, setShowLoginForm] = useState(false);
@@ -54,6 +56,29 @@ export default function Login() {
   const [verifyingToken, setVerifyingToken] = useState(false);
   const { setUser, setTelegramPhoto } = useStore();
   const { t } = useTranslation();
+  const modeRef = useRef(mode);
+  modeRef.current = mode;
+  const form = useForm({
+    mode: 'controlled',
+    validateInputOnBlur: true,
+    initialValues: { login: '', password: '', confirmPassword: '' },
+    validate: {
+      login: (value) => {
+        if (requireEmailRegister && modeRef.current === 'register') {
+          return isEmail(t('auth.invalidEmail'))(value);
+        }
+        return null;
+      },
+      password: (value) => {
+        if (modeRef.current !== 'register') return null;
+        return hasLength({ min: 6 }, t('auth.passwordTooShort'))(value);
+      },
+      confirmPassword: (value, values) => {
+        if (modeRef.current !== 'register') return null;
+        return value === values.password ? null : t('auth.passwordsMismatch');
+      },
+    },
+  });
   const isWebAuthnSupported = !!window.PublicKeyCredential;
   const { telegramWebApp } = useTelegramWebApp();
   const autoAuthTriggeredRef = useRef(false);
@@ -147,14 +172,14 @@ export default function Login() {
   };
 
   const handleLogin = async (otpTokenParam?: string) => {
-    if (!formData.login || !formData.password) {
+    if (!form.values.login || !form.values.password) {
       notifications.show({ title: t('common.error'), message: t('auth.fillAllFields'), color: 'red' });
       return;
     }
 
     setLoading(true);
     try {
-      const result = await auth.login(formData.login, formData.password, otpTokenParam);
+      const result = await auth.login(form.values.login, form.values.password, otpTokenParam);
 
       if (result.otpRequired) {
         setShowOtp(true);
@@ -191,21 +216,21 @@ export default function Login() {
   };
 
   const handleRegister = async () => {
-    if (!formData.login || !formData.password) {
+    const { hasErrors } = form.validate();
+    if (hasErrors) return;
+
+    const { login, password } = form.values;
+    if (!login || !password) {
       notifications.show({ title: t('common.error'), message: t('auth.fillAllFields'), color: 'red' });
-      return;
-    }
-    if (formData.password !== formData.confirmPassword) {
-      notifications.show({ title: t('common.error'), message: t('auth.passwordsMismatch'), color: 'red' });
       return;
     }
 
     setLoading(true);
     try {
-      await auth.register(formData.login, formData.password);
+      await auth.register(login, password);
       notifications.show({ title: t('common.success'), message: t('auth.registerSuccess'), color: 'green' });
       setMode('login');
-      setFormData({ ...formData, confirmPassword: '' });
+      form.setValues({ confirmPassword: '' });
     } catch {
       notifications.show({ title: t('common.error'), message: t('auth.registerError'), color: 'red' });
     } finally {
@@ -280,14 +305,14 @@ export default function Login() {
   };
 
   const handleResetPassword = async () => {
-    if (!formData.login_or_email) {
+    if (!loginOrEmail) {
       notifications.show({ title: t('common.error'), message: t('auth.resetEnterLogin'), color: 'red' });
       return;
     }
 
     setResetLoading(true);
     try {
-      const loginResponse = await userApi.resetPassword({ login: formData.login_or_email });
+      const loginResponse = await userApi.resetPassword({ login: loginOrEmail });
       const loginMsg = loginResponse.data?.data?.[0]?.msg || loginResponse.data?.data?.msg;
       if (loginMsg === 'Successful') {
         notifications.show({ title: t('common.success'), message: t('auth.resetSuccess'), color: 'green' });
@@ -296,7 +321,7 @@ export default function Login() {
         return;
       }
 
-      const emailResponse = await userApi.resetPassword({ email: formData.login_or_email });
+      const emailResponse = await userApi.resetPassword({ email: loginOrEmail });
       const emailMsg = emailResponse.data?.data?.[0]?.msg || emailResponse.data?.data?.msg;
       if (emailMsg === 'Successful') {
         notifications.show({ title: t('common.success'), message: t('auth.resetSuccess'), color: 'green' });
@@ -425,30 +450,38 @@ export default function Login() {
             <>
               <form onSubmit={handleSubmit}>
                 <Stack gap="sm">
-                  <TextInput
-                    label={t('auth.loginLabel')}
-                    placeholder={t('auth.loginPlaceholder')}
-                    value={formData.login}
-                    onChange={(e) => setFormData({ ...formData, login: e.target.value })}
-                    autoComplete="username"
-                    name="username"
-                  />
+                  {mode === 'register' && requireEmailRegister ? (
+                    <TextInput
+                      label={t('auth.emailLabel')}
+                      placeholder={t('auth.emailPlaceholder')}
+                      autoComplete="email"
+                      name="email"
+                      type="email"
+                      {...form.getInputProps('login')}
+                    />
+                  ) : (
+                    <TextInput
+                      label={t('auth.loginLabel')}
+                      placeholder={t('auth.loginPlaceholder')}
+                      autoComplete="username"
+                      name="username"
+                      {...form.getInputProps('login')}
+                    />
+                  )}
                   <PasswordInput
                     label={t('auth.passwordLabel')}
                     placeholder={t('auth.passwordPlaceholder')}
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                     autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
                     name="password"
+                    {...form.getInputProps('password')}
                   />
                   {mode === 'register' && (
                     <PasswordInput
                       label={t('auth.confirmPasswordLabel')}
                       placeholder={t('auth.confirmPasswordPlaceholder')}
-                      value={formData.confirmPassword}
-                      onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                       autoComplete="new-password"
                       name="confirm-password"
+                      {...form.getInputProps('confirmPassword')}
                     />
                   )}
                   <Button
@@ -475,14 +508,14 @@ export default function Login() {
                 {mode === 'login' ? (
                   <>
                     {t('auth.noAccount')}{' '}
-                    <Text component="span" c="blue" style={{ cursor: 'pointer' }} onClick={() => setMode('register')}>
+                    <Text component="span" c="blue" style={{ cursor: 'pointer' }} onClick={() => { setMode('register'); form.clearErrors(); }}>
                       {t('auth.register')}
                     </Text>
                   </>
                 ) : (
                   <>
                     {t('auth.hasAccount')}{' '}
-                    <Text component="span" c="blue" style={{ cursor: 'pointer' }} onClick={() => setMode('login')}>
+                    <Text component="span" c="blue" style={{ cursor: 'pointer' }} onClick={() => { setMode('login'); form.clearErrors(); }}>
                       {t('auth.login')}
                     </Text>
                   </>
@@ -573,8 +606,8 @@ export default function Login() {
           <TextInput
             label={t('auth.loginOrEmail')}
             placeholder={t('auth.loginOrEmailPlaceholder')}
-            value={formData.login_or_email}
-            onChange={(e) => setFormData({ ...formData, login_or_email: e.target.value })}
+            value={loginOrEmail}
+            onChange={(e) => setLoginOrEmail(e.target.value)}
             autoFocus
           />
           <Group justify="flex-end" gap="sm">
@@ -588,7 +621,7 @@ export default function Login() {
               leftSection={<IconMailForward size={16} />}
               onClick={handleResetPassword}
               loading={resetLoading}
-              disabled={!formData.login_or_email}
+              disabled={!loginOrEmail}
             >
               {t('auth.resetPasswordSend')}
             </Button>
