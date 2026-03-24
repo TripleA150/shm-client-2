@@ -75,7 +75,7 @@ export const auth = {
     const response = await api.post('/telegram/web/auth', {
       ...userData,
       register_if_not_exists: 1,
-      ...(config.TELEGRAM_WEBAPP_PROFILE && { profile: config.TELEGRAM_WEBAPP_PROFILE }),
+      profile: config.TELEGRAM_BOT_AUTH_PROFILE,
       ...(partnerId && { partner_id: partnerId }),
     });
     const sessionId = response.data?.session_id || response.data?.id;
