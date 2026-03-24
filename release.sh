@@ -18,6 +18,6 @@ npm version "$VERSION" --no-git-tag-version
 git add package.json package-lock.json
 git commit -m "chore: bump version to $VERSION"
 git tag "$VERSION"
-git push --follow-tags
+git push origin tag "$VERSION"
 
 echo "Released $VERSION"
