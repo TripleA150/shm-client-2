@@ -464,14 +464,18 @@ function AppContent() {
       >
         <AppShell.Header>
           <Group h="100%" px="md" justify="space-between" wrap="nowrap">
-            <Group>
+            <Group gap="xs" onClick={() => navigate('/')} style={{ cursor: 'pointer' }} {...longPressProps}>
+              {config.LOGO_URL && (
+                <img
+                  src={config.LOGO_URL}
+                  alt=""
+                  style={{ height: 32, width: 32, objectFit: 'contain', flexShrink: 0 }}
+                />
+              )}
               <Text
                 size="lg"
                 fw={700}
-                onClick={() => navigate('/')}
-                style={{ cursor: 'pointer' }}
                 visibleFrom={config.APP_NAME.length > 10 ? 'sm' : undefined}
-                {...longPressProps}
               >
                 {config.APP_NAME}
               </Text>
