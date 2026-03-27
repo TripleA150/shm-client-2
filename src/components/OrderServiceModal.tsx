@@ -165,7 +165,8 @@ export default function OrderServiceModal({
       const filtered = isChangeMode && currentService?.service_id
         ? data.filter(service => service.service_id !== currentService.service_id)
         : data;
-      setServices(filtered);
+      const sorted = filtered.sort((a, b) => Number(a.cost) - Number(b.cost));
+      setServices(sorted);
     } catch (error) {
       notifications.show({
         title: t('common.error'),
