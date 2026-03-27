@@ -446,17 +446,21 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
             <Stack gap="md">
               {isProxy && subscriptionUrl && (
                 <Paper withBorder p="md" radius="md">
-                  { config.SHOW_PROXY_SUB_LINK && ( <Text size="sm" fw={500} mb="xs">{t('services.subscriptionLink')}</Text> ) }
-                  <Group gap="xs">
-                    <Code style={{ flex: 1, wordBreak: 'break-all' }}>{subscriptionUrl}</Code>
-                    <Tooltip label={clipboard.copied ? t('common.copied') : t('common.copy')}>
-                      <ActionIcon color={clipboard.copied ? 'teal' : 'gray'} variant="subtle" onClick={() => clipboard.copy(subscriptionUrl)}>
-                        {clipboard.copied ? <IconCheck size={16} /> : <IconCopy size={16} />}
-                      </ActionIcon>
-                    </Tooltip>
-                  </Group>
+                  { config.SHOW_PROXY_SUB_LINK === 'true' && (
+                    <>
+                    <Text size="sm" fw={500} mb="xs">{t('services.subscriptionLink')}</Text>
+                    <Group gap="xs">
+                      <Code style={{ flex: 1, wordBreak: 'break-all' }}>{subscriptionUrl}</Code>
+                      <Tooltip label={clipboard.copied ? t('common.copied') : t('common.copy')}>
+                        <ActionIcon color={clipboard.copied ? 'teal' : 'gray'} variant="subtle" onClick={() => clipboard.copy(subscriptionUrl)}>
+                          {clipboard.copied ? <IconCheck size={16} /> : <IconCopy size={16} />}
+                        </ActionIcon>
+                      </Tooltip>
+                    </Group>
+                    <Divider my="xs" />
+                    </>
+                  ) }
 
-                  <Divider my="xs" />
 
                   <Group gap="xs">
                     {hasProxyAppUrls ? (
@@ -466,7 +470,7 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
                         </Timeline.Item>
                         <Timeline.Item bullet={<IconDeviceMobileCog size={12} />} title={t('services.stepConfigureApp') + ' ' + (urlSchema ? t('services.deviceConfig') : t('services.openSubLink'))}>
                           <Group gap="xs" mt="xs">
-                            { config.SHOW_PROXY_QR && (
+                            { config.SHOW_PROXY_QR === 'true' && (
                               <Button
                                 leftSection={<IconQrcode size={16} />}
                                 variant="light"
