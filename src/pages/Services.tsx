@@ -284,9 +284,25 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
     return '';
   }
 
-  const handleOpenUrlSchema = () => {
+  const handleOpenUrlSchema = async () => {
     const urlSchema = config[`${detectPlatform()}_PROXY_URL_SCHEMA` as keyof typeof config];
-    const link = `${urlSchema}${subscriptionUrl}`;
+    let link = `${urlSchema}${subscriptionUrl}`;
+    if ( config.SHOW_PROXY_HAPP_CRYPTOLINK === 'true' ) {
+      try {
+        const response = await fetch(`https://crypto.happ.su/api-v2.php`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ url: subscriptionUrl }),
+        });
+        const data = await response.json();
+        if (data && data.encrypted_link) {
+          link = data.encrypted_link;
+        }
+      } catch {
+      }
+    }
     if ( link ) {
       const tgWebApp = window.Telegram?.WebApp;
       if (tgWebApp && isTelegramWebApp) {
@@ -459,7 +475,7 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
                     </Group>
                     <Divider my="xs" />
                     </>
-                  ) }
+                  )}
 
 
                   <Group gap="xs">
