@@ -579,7 +579,7 @@ export default function Login() {
                   >
                     {mode === 'login' ? t('auth.login') : t('auth.register')}
                   </Button>
-                  {mode === 'login' && isWebAuthnSupported && hasTelegramWidget && config.PASSKEY_AUTH_DISABLED === 'false' && (
+                  {mode === 'login' && isWebAuthnSupported && config.PASSKEY_AUTH_DISABLED === 'false' && (
                     <Button
                       variant="light"
                       leftSection={<IconFingerprint size={18} />}
